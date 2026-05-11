@@ -4,7 +4,6 @@
  *
  * Wires Express app with:
  *   - Streamable HTTP transport for MCP
- *   - Optional MCP-level OAuth (via SDK auth helpers)
  *   - Session management
  *   - Graceful shutdown
  */
@@ -14,17 +13,12 @@ import { randomUUID } from 'node:crypto';
 import express, { Request, Response } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
-import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { LeanIXClient, loadConfig } from './leanix-client.js';
 import { createMcpServer } from './server.js';
-import { DemoOAuthProvider } from './oauth-provider.js';
 
 // ─── Configuration ──────────────────────────────────────────────────────────────
 
 const MCP_PORT = parseInt(process.env.MCP_PORT || '3000', 10);
-const MCP_AUTH_PORT = parseInt(process.env.MCP_AUTH_PORT || '3001', 10);
-const oauthEnabled = (process.env.MCP_OAUTH_ENABLED || 'true').toLowerCase() !== 'false';
 
 // ─── LeanIX Client (singleton) ──────────────────────────────────────────────────
 
@@ -35,34 +29,6 @@ const leanixClient = new LeanIXClient(leanixConfig);
 
 const app = express();
 app.use(express.json());
-
-// ─── OAuth Setup ────────────────────────────────────────────────────────────────
-
-let authMiddleware: express.RequestHandler | null = null;
-
-if (oauthEnabled) {
-  const provider = new DemoOAuthProvider();
-  const authServerUrl = new URL(`http://localhost:${MCP_AUTH_PORT}`);
-
-  // Start separate OAuth authorization server
-  const authApp = express();
-  authApp.use(express.json());
-  authApp.use(express.urlencoded({ extended: true }));
-  authApp.use(
-    mcpAuthRouter({
-      provider,
-      issuerUrl: authServerUrl,
-      scopesSupported: ['mcp:tools'],
-    })
-  );
-
-  authApp.listen(MCP_AUTH_PORT, () => {
-    console.log(`OAuth Authorization Server listening on port ${MCP_AUTH_PORT}`);
-  });
-
-  // Bearer auth middleware for MCP endpoints
-  authMiddleware = requireBearerAuth({ verifier: provider });
-}
 
 // ─── Session Management ─────────────────────────────────────────────────────────
 
@@ -146,19 +112,13 @@ const mcpDeleteHandler = async (req: Request, res: Response): Promise<void> => {
 
 // ─── Route Registration ─────────────────────────────────────────────────────────
 
-if (authMiddleware) {
-  app.post('/mcp', authMiddleware, mcpPostHandler);
-  app.get('/mcp', authMiddleware, mcpGetHandler);
-  app.delete('/mcp', authMiddleware, mcpDeleteHandler);
-} else {
-  app.post('/mcp', mcpPostHandler);
-  app.get('/mcp', mcpGetHandler);
-  app.delete('/mcp', mcpDeleteHandler);
-}
+app.post('/mcp', mcpPostHandler);
+app.get('/mcp', mcpGetHandler);
+app.delete('/mcp', mcpDeleteHandler);
 
-// Health check (unauthenticated)
+// Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', oauth: oauthEnabled });
+  res.json({ status: 'ok' });
 });
 
 // ─── Start Server ───────────────────────────────────────────────────────────────
@@ -166,11 +126,7 @@ app.get('/health', (_req, res) => {
 app.listen(MCP_PORT, () => {
   console.log(`LeanIX MCP Server listening on port ${MCP_PORT}`);
   console.log(`  Transport: Streamable HTTP`);
-  console.log(`  OAuth: ${oauthEnabled ? 'enabled' : 'disabled'}`);
   console.log(`  Endpoint: http://localhost:${MCP_PORT}/mcp`);
-  if (oauthEnabled) {
-    console.log(`  Auth server: http://localhost:${MCP_AUTH_PORT}`);
-  }
 });
 
 // ─── Graceful Shutdown ──────────────────────────────────────────────────────────

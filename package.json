@@ -1,7 +1,7 @@
 {
   "name": "leanix-mcp-tiny-server",
   "version": "1.0.0",
-  "description": "LeanIX MCP Tiny Server with OAuth support - Streamable HTTP and stdio transports",
+  "description": "LeanIX MCP Tiny Server - Streamable HTTP and stdio transports",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -37,6 +37,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["mcp", "leanix", "enterprise-architecture", "graphql", "oauth"],
+  "keywords": ["mcp", "leanix", "enterprise-architecture", "graphql"],
   "license": "MIT"
 }

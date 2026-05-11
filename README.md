@@ -1,6 +1,6 @@
 # LeanIX MCP Server (JavaScript/TypeScript)
 
-MCP server for LeanIX Enterprise Architecture with OAuth support, serving over Streamable HTTP.
+MCP server for LeanIX Enterprise Architecture, serving over Streamable HTTP.
 
 ## Tools
 
@@ -38,8 +38,6 @@ npm start
 | `LEANIX_CLIENT_ID` | Yes* | — | OAuth2 client ID |
 | `LEANIX_CLIENT_SECRET` | Yes* | — | OAuth2 client secret |
 | `MCP_PORT` | No | `3000` | MCP server port |
-| `MCP_AUTH_PORT` | No | `3001` | OAuth authorization server port |
-| `MCP_OAUTH_ENABLED` | No | `true` | Enable MCP-level OAuth |
 
 \* Provide either `LEANIX_API_TOKEN` or both `LEANIX_CLIENT_ID` + `LEANIX_CLIENT_SECRET`.
 
@@ -49,12 +47,10 @@ npm start
 Client (Claude, etc.)
     │
     │  MCP over Streamable HTTP (POST/GET/DELETE /mcp)
-    │  + OAuth2 bearer token (when MCP_OAUTH_ENABLED=true)
     │
     ▼
 ┌─────────────────────────────────────────┐
 │  Express App (port 3000)                │
-│  ├── OAuth middleware (bearer auth)     │
 │  ├── Session management                 │
 │  └── StreamableHTTPServerTransport      │
 │       └── McpServer                     │
@@ -72,24 +68,54 @@ Client (Claude, etc.)
 └─────────────────────────────────────────┘
 ```
 
-## OAuth
-
-When `MCP_OAUTH_ENABLED=true` (default), the server requires MCP clients to authenticate via OAuth2 before calling tools. The included OAuth provider is a **demo/reference implementation** (in-memory, auto-approves). For production, replace with your real identity provider.
-
-To disable OAuth (e.g., for local development):
-```
-MCP_OAUTH_ENABLED=false
-```
-
 ## MCP Client Configuration
 
-Add to your MCP client config (e.g., Claude Desktop `claude_desktop_config.json`):
+### Streamable HTTP (remote / shared)
+
+Start the server (`npm start` or `npm run dev`), then point your MCP client at it:
 
 ```json
 {
   "mcpServers": {
     "leanix": {
       "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+### stdio (local / spawned by client)
+
+The client spawns the server as a child process — no network required:
+
+```json
+{
+  "mcpServers": {
+    "leanix": {
+      "command": "node",
+      "args": ["dist/stdio.js"],
+      "cwd": "/path/to/leanixmcp",
+      "env": {
+        "LEANIX_WORKSPACE_ID": "your-workspace-id",
+        "LEANIX_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+Or if installed globally / via `npx`:
+
+```json
+{
+  "mcpServers": {
+    "leanix": {
+      "command": "npx",
+      "args": ["leanix-mcp-tiny-server"],
+      "env": {
+        "LEANIX_WORKSPACE_ID": "your-workspace-id",
+        "LEANIX_API_TOKEN": "your-api-token"
+      }
     }
   }
 }
