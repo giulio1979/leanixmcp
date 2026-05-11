@@ -321,5 +321,51 @@ Examples:
     }
   );
 
+  // ─── Tool 4: publish_diagram ──────────────────────────────────────────────────
+
+  server.registerTool(
+    'publish_diagram',
+    {
+      title: 'Publish Diagram',
+      description: `Create a Free Draw diagram in LeanIX from draw.io XML content.
+
+Takes base64-encoded draw.io XML and publishes it as a named diagram. Optionally links it to fact sheets.
+
+Args:
+  name: Display name for the diagram in LeanIX.
+  content_base64: The diagram content (draw.io XML) encoded as base64.
+  description: Optional description for the diagram.
+  fact_sheet_ids: Optional array of fact sheet IDs to link the diagram to.
+
+Returns the created diagram metadata (id, name, URL).`,
+      inputSchema: {
+        name: z.string().describe('Display name for the diagram in LeanIX'),
+        content_base64: z.string().describe('Diagram content (draw.io XML) encoded as base64'),
+        description: z.string().optional().describe('Optional description for the diagram'),
+        fact_sheet_ids: z.array(z.string()).optional().describe('Optional fact sheet IDs to link the diagram to'),
+      },
+    },
+    async ({ name, content_base64, description, fact_sheet_ids }): Promise<CallToolResult> => {
+      try {
+        const content = Buffer.from(content_base64, 'base64').toString('utf-8');
+
+        if (!content.includes('<svg') && !content.includes('<mxfile') && !content.includes('<mxGraphModel')) {
+          return {
+            content: [{ type: 'text', text: 'Error: Decoded content does not appear to be valid SVG or draw.io XML.' }],
+            isError: true,
+          };
+        }
+
+        const result = await client.createDiagram(name, content, { description, factSheetIds: fact_sheet_ids });
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: `Error publishing diagram: ${err.message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   return server;
 }

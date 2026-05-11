@@ -1,6 +1,6 @@
 {
   "name": "leanix-mcp-tiny-server",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "LeanIX MCP Tiny Server - Streamable HTTP and stdio transports",
   "type": "module",
   "main": "dist/index.js",

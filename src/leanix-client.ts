@@ -194,4 +194,28 @@ export class LeanIXClient {
     const response = await this.request('POST', endpoint, { json: payload });
     return await response.json() as Record<string, unknown>;
   }
+
+  /**
+   * Create a Free Draw diagram in LeanIX (stored as a bookmark).
+   */
+  async createDiagram(name: string, diagramXml: string, options?: { description?: string; factSheetIds?: string[] }): Promise<Record<string, unknown>> {
+    const endpoint = `${this.config.pathfinderUrl}/bookmarks`;
+    const payload: Record<string, unknown> = {
+      name,
+      type: 'VISUALIZER',
+      groupKey: 'freedraw',
+      description: options?.description || '',
+      state: {
+        graphXml: diagramXml,
+        autoUpdate: true,
+        version: 2,
+      },
+    };
+    if (options?.factSheetIds && options.factSheetIds.length > 0) {
+      payload.referencedFactSheetIds = options.factSheetIds;
+    }
+
+    const response = await this.request('POST', endpoint, { json: payload });
+    return await response.json() as Record<string, unknown>;
+  }
 }
